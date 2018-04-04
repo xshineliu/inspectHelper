@@ -174,6 +174,8 @@ int dump_info(int pid, int tid){
 }
 
 
+#ifndef THREADINFO_AS_LIB
+
 int main(int argc, char* argv[])
 {
         pid_t pid = 0;
@@ -186,6 +188,7 @@ int main(int argc, char* argv[])
 
 	if(argc < 2) {
         	fprintf(stderr, "Usage: %s PID [TID]\n", argv[0]);
+		exit(1);
 	}
 
         pid = atoi(argv[1]);
@@ -213,3 +216,5 @@ int main(int argc, char* argv[])
 	}
         return 0;
 }
+
+#endif
