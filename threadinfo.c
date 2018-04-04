@@ -5,11 +5,14 @@
 *      Author: Shine
 */
 
+
+#define _POSIX_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
+#include <dirent.h>
 
 #define MAX_LEN 4096
 
@@ -42,6 +45,28 @@ float get_uptime(void)
 }
 
 
+void print_comm(pid_t pid, pid_t tid)
+{
+        FILE *f = NULL;
+        char *chk = NULL;
+        char filePath[64];
+        char buf[MAX_LEN];
+
+        sprintf(filePath, "/proc/%d/task/%d/comm", pid, tid);
+        f = fopen(filePath, "r");
+        if(!f) {
+                fprintf(stderr, "No such file?\n");
+                return;
+        }
+
+        while((chk = fgets(buf, MAX_LEN, f))) {
+        }
+	buf[strlen(buf) - 1] = '\0';
+        printf("%s\t", buf);
+        fclose(f);
+}
+
+
 int print_stat(pid_t pid, pid_t tid)
 {
         FILE *f = NULL;
@@ -69,7 +94,7 @@ int print_stat(pid_t pid, pid_t tid)
         }
         /* item 14 */
         val = (float)(atoi(++chk)) / 100.f;
-        printf("User: \t%.2f\t", val);
+        printf("User \t%.2f\t", val);
         while((*chk) != ' ') {
                 chk++;
         }
@@ -77,7 +102,7 @@ int print_stat(pid_t pid, pid_t tid)
 
         /* item 15 */
         val = (float)(atoi(++chk)) / 100.f;
-        printf("Sys:\t%.2f\t", val);
+        printf("Sys\t%.2f\t", val);
         i++;
 
         while (i < 22) {
@@ -89,7 +114,7 @@ int print_stat(pid_t pid, pid_t tid)
         //printf("%s\n", chk);
         /* item 22 */
         val = (float)(atoi(++chk)) / 100.f;
-        printf("Wall:\t%.2f\t", get_uptime() - val);
+        printf("Wall\t%.2f\t", get_uptime() - val);
 
         fclose(f);
 }
@@ -134,23 +159,57 @@ int print_status(pid_t pid, pid_t tid)
                         continue;
                 }
         }
-        printf("CTX:\t%lld, %lld\t", v_ctx, nonv_ctx);
+        printf("CTX\t%lld %lld\t", v_ctx, nonv_ctx);
         fclose(f);
+}
+
+int dump_info(int pid, int tid){
+
+        printf("PID %d TID %d\t", pid, tid);
+        print_comm(pid, tid);
+        get_uptime();
+        print_stat(pid, tid);
+        print_status(pid, tid);
+        printf("\n");
 }
 
 
 int main(int argc, char* argv[])
 {
-        pid_t pid;
-        pid_t tid;
+        pid_t pid = 0;
+        pid_t tid = 0;
+	int nr_tid = 1;
+	int* tid_list = NULL;
+	DIR* dir;
+	struct dirent *entry;
+	char path_buf[32];
+
+	if(argc < 2) {
+        	fprintf(stderr, "Usage: %s PID [TID]\n", argv[0]);
+	}
+
         pid = atoi(argv[1]);
-        tid = atoi(argv[2]);
+	if(argc > 2) {
+        	tid = atoi(argv[2]);
+	}
+	sprintf(path_buf, "/proc/%d/task", pid);
+	if((dir = opendir(path_buf)) == NULL) {
+		fprintf(stderr, "PID %d not valid or open proc directory failed\n", pid);
+		exit(errno);
+	}
 
-
-        printf("PID: %d, TID: %d.\t", pid, tid);
-        get_uptime();
-        print_stat(pid, tid);
-        print_status(pid, tid);
-        printf("\n");
+	if(argc > 2) {
+		dump_info(pid, tid);
+	} else {
+		while ( ( entry = readdir ( dir ) ) ){
+                    if ( strcmp( entry->d_name, "." ) && strcmp( entry->d_name, ".." )){
+                        //sprintf(path_buf, "/proc/%d/task/%s", pid, entry->d_name);
+                        //printf("/proc/%d/tasks/%s\n", pid, entry->d_name);
+			tid = atoi(entry->d_name);
+			dump_info(pid, tid);
+                    }
+                }
+		
+	}
         return 0;
 }
