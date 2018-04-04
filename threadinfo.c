@@ -12,12 +12,61 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <dirent.h>
 
 #define MAX_LEN 4096
 
 extern int errno;
 
+void print_args(int pid){
+
+	int fd, nbytes, i;
+        char *chk = NULL;
+        char filePath[64];
+        char buf[MAX_LEN];
+        
+        sprintf(filePath, "/proc/%d/cmdline", pid);
+	fd = open(filePath, O_RDONLY);
+        if(fd < 0) {
+                fprintf(stderr, "No such file?\n");
+                return;
+        }
+	nbytes = read(fd, buf, MAX_LEN);
+        //printf("%d bytes returned\n", nbytes);
+        //buf[strlen(buf) - 1] = '\0';
+	for(i = 0; i < nbytes - 1; i++) {
+		if(buf[i] == '\0') {
+        		//printf("%d %d\n", nbytes, i);
+			buf[i] = '\n';
+		}
+	}
+        //printf("%d %d\n", nbytes, i);
+        printf("%s\n", buf);
+        close(fd);
+}
+
+void print_io(int pid)
+{
+        FILE *f = NULL;
+        char *chk = NULL;
+        char filePath[64];
+        char buf[MAX_LEN];
+
+        sprintf(filePath, "/proc/%d/io", pid);
+        f = fopen(filePath, "r");
+        if(!f) {
+                fprintf(stderr, "No such file? %s\n", filePath);
+                return;
+        }
+
+        while((chk = fgets(buf, MAX_LEN, f))) {
+        	//buf[strlen(buf) - 1] = '\0';
+        	printf("IO_PID %d %s", pid, buf);
+	}
+        fclose(f);
+}
 
 float get_uptime(void)
 {
@@ -26,15 +75,16 @@ float get_uptime(void)
         char buf[MAX_LEN];
         float uptime = 0.0f;
 
-        f = fopen("/proc/uptime", "r");
+	char *filePath = "/proc/uptime";
+        f = fopen(filePath, "r");
         if(!f) {
-                printf("No such file?\n");
+                fprintf(stderr, "No such file? %s\n", filePath);
                 return errno;
         }
 
         chk = fgets(buf, MAX_LEN, f);
         if(!chk) {
-                printf("Error to Read.\n");
+                fprintf(stderr, "Error to Read.\n");
         }
 
         uptime = atof(chk);
@@ -55,7 +105,7 @@ void print_comm(pid_t pid, const char *task)
         sprintf(filePath, "/proc/%d%s/comm", pid, task);
         f = fopen(filePath, "r");
         if(!f) {
-                fprintf(stderr, "No such file?\n");
+                fprintf(stderr, "No such file? %s\n", filePath);
                 return;
         }
 
@@ -78,12 +128,12 @@ int print_stat(pid_t pid, const char *task)
         sprintf(filePath, "/proc/%d%s/stat", pid, task);
         f = fopen(filePath, "r");
         if(!f) {
-                printf("No such file?\n");
+                fprintf(stderr, "No such file? %s\n", filePath);
                 return errno;
         }
         chk = fgets(buf, MAX_LEN, f);
         if(!chk) {
-                printf("Error to Read.\n");
+                fprintf(stderr, "Error to Read %s.\n", filePath);
         }
         //printf("%s\n", chk);
         while (i < 13) {
@@ -133,7 +183,7 @@ int print_status(pid_t pid, const char* task)
         sprintf(filePath, "/proc/%d%s/status", pid, task);
         f = fopen(filePath, "r");
         if(!f) {
-                printf("No such file?\n");
+                fprintf(stderr, "No such file? %s\n", filePath);
                 return errno;
         }
 
@@ -193,6 +243,8 @@ int dump_info_pid_only(int pid) {
 		exit(errno);
 	}
 
+	print_args(pid);
+	print_io(pid);
 	dump_info(pid, 0, 0);
 	while ( ( entry = readdir ( dir ) ) ){
                 if ( strcmp( entry->d_name, "." ) && strcmp( entry->d_name, ".." )){
@@ -226,10 +278,8 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-
 	dump_info_pid_only(pid);
         return 0;
 }
 
 #endif
-
