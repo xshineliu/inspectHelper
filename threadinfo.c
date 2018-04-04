@@ -173,6 +173,27 @@ int dump_info(int pid, int tid){
         printf("\n");
 }
 
+int dump_info_pid_only(int pid) {
+        DIR* dir;
+        struct dirent *entry;
+	char path_buf[32];
+	int tid;
+
+	sprintf(path_buf, "/proc/%d/task", pid);
+	if((dir = opendir(path_buf)) == NULL) {
+		fprintf(stderr, "PID %d not valid or open proc directory failed\n", pid);
+		exit(errno);
+	}
+
+	while ( ( entry = readdir ( dir ) ) ){
+                if ( strcmp( entry->d_name, "." ) && strcmp( entry->d_name, ".." )){
+	                //printf("/proc/%d/tasks/%s\n", pid, entry->d_name);
+			tid = atoi(entry->d_name);
+			dump_info(pid, tid);
+		}
+         }
+        closedir(dir);
+}
 
 #ifndef THREADINFO_AS_LIB
 
@@ -180,8 +201,6 @@ int main(int argc, char* argv[])
 {
         pid_t pid = 0;
         pid_t tid = 0;
-	int nr_tid = 1;
-	int* tid_list = NULL;
 	DIR* dir;
 	struct dirent *entry;
 	char path_buf[32];
@@ -194,26 +213,12 @@ int main(int argc, char* argv[])
         pid = atoi(argv[1]);
 	if(argc > 2) {
         	tid = atoi(argv[2]);
-	}
-	sprintf(path_buf, "/proc/%d/task", pid);
-	if((dir = opendir(path_buf)) == NULL) {
-		fprintf(stderr, "PID %d not valid or open proc directory failed\n", pid);
-		exit(errno);
+		dump_info(pid, tid);
+		exit(1);
 	}
 
-	if(argc > 2) {
-		dump_info(pid, tid);
-	} else {
-		while ( ( entry = readdir ( dir ) ) ){
-                    if ( strcmp( entry->d_name, "." ) && strcmp( entry->d_name, ".." )){
-                        //sprintf(path_buf, "/proc/%d/task/%s", pid, entry->d_name);
-                        //printf("/proc/%d/tasks/%s\n", pid, entry->d_name);
-			tid = atoi(entry->d_name);
-			dump_info(pid, tid);
-                    }
-                }
-		
-	}
+
+	dump_info_pid_only(pid);
         return 0;
 }
 
