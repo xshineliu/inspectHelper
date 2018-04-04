@@ -45,14 +45,14 @@ float get_uptime(void)
 }
 
 
-void print_comm(pid_t pid, pid_t tid)
+void print_comm(pid_t pid, const char *task)
 {
         FILE *f = NULL;
         char *chk = NULL;
         char filePath[64];
         char buf[MAX_LEN];
 
-        sprintf(filePath, "/proc/%d/task/%d/comm", pid, tid);
+        sprintf(filePath, "/proc/%d%s/comm", pid, task);
         f = fopen(filePath, "r");
         if(!f) {
                 fprintf(stderr, "No such file?\n");
@@ -67,7 +67,7 @@ void print_comm(pid_t pid, pid_t tid)
 }
 
 
-int print_stat(pid_t pid, pid_t tid)
+int print_stat(pid_t pid, const char *task)
 {
         FILE *f = NULL;
         char *chk = NULL;
@@ -75,7 +75,7 @@ int print_stat(pid_t pid, pid_t tid)
         char buf[MAX_LEN];
         int i = 0;
         float val;
-        sprintf(filePath, "/proc/%d/task/%d/stat", pid, tid);
+        sprintf(filePath, "/proc/%d%s/stat", pid, task);
         f = fopen(filePath, "r");
         if(!f) {
                 printf("No such file?\n");
@@ -120,7 +120,7 @@ int print_stat(pid_t pid, pid_t tid)
 }
 
 
-int print_status(pid_t pid, pid_t tid)
+int print_status(pid_t pid, const char* task)
 {
         FILE *f = NULL;
         char *chk = NULL;
@@ -130,7 +130,7 @@ int print_status(pid_t pid, pid_t tid)
         float val;
         long long v_ctx = 0L, nonv_ctx = 0L;
 
-        sprintf(filePath, "/proc/%d/task/%d/status", pid, tid);
+        sprintf(filePath, "/proc/%d%s/status", pid, task);
         f = fopen(filePath, "r");
         if(!f) {
                 printf("No such file?\n");
@@ -163,13 +163,20 @@ int print_status(pid_t pid, pid_t tid)
         fclose(f);
 }
 
-int dump_info(int pid, int tid){
+int dump_info(int pid, int tid, int seq){
 
-        printf("PID %d TID %d\t", pid, tid);
-        print_comm(pid, tid);
+	char taskid_buf[32];
+	if(tid != 0) {
+		sprintf(taskid_buf, "/task/%d", tid);
+        	printf("%04d PID %d TID %d\t", seq,  pid, tid);
+	} else {
+		taskid_buf[0]='\0';
+        	printf("%04d PID %d TID XXXXXX\t",0,  pid);
+	}
+        print_comm(pid, taskid_buf);
         get_uptime();
-        print_stat(pid, tid);
-        print_status(pid, tid);
+        print_stat(pid, taskid_buf);
+        print_status(pid, taskid_buf);
         printf("\n");
 }
 
@@ -178,6 +185,7 @@ int dump_info_pid_only(int pid) {
         struct dirent *entry;
 	char path_buf[32];
 	int tid;
+	int seq = 0;
 
 	sprintf(path_buf, "/proc/%d/task", pid);
 	if((dir = opendir(path_buf)) == NULL) {
@@ -185,11 +193,12 @@ int dump_info_pid_only(int pid) {
 		exit(errno);
 	}
 
+	dump_info(pid, 0, 0);
 	while ( ( entry = readdir ( dir ) ) ){
                 if ( strcmp( entry->d_name, "." ) && strcmp( entry->d_name, ".." )){
 	                //printf("/proc/%d/tasks/%s\n", pid, entry->d_name);
 			tid = atoi(entry->d_name);
-			dump_info(pid, tid);
+			dump_info(pid, tid, ++seq);
 		}
          }
         closedir(dir);
@@ -213,7 +222,7 @@ int main(int argc, char* argv[])
         pid = atoi(argv[1]);
 	if(argc > 2) {
         	tid = atoi(argv[2]);
-		dump_info(pid, tid);
+		dump_info(pid, tid, -1);
 		exit(1);
 	}
 
@@ -223,3 +232,4 @@ int main(int argc, char* argv[])
 }
 
 #endif
+
