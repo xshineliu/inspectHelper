@@ -1,0 +1,8 @@
+
+
+probe syscall.mkdir
+{
+  printf("ARGS: %s\n", argstr)
+  print("\n")
+}
+
