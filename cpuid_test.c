@@ -59,7 +59,7 @@ int t1() {
 
 int main() {
 
-	int reg, max = 0;
+	unsigned int reg, max = 0;
 	int            cpuid_fd   = -1;
 	unsigned int  words[WORD_NUM];
 
@@ -76,11 +76,16 @@ int main() {
 		if (reg == 0) {
 			max = words[WORD_EAX];
 		}
-		if(reg == max) {
-			reg = 0x40000000;
-			max = 0x40000000;
-			real_get(cpuid_fd, reg, words, 0, FALSE);
-			printf("%x/%x %x %x %x %x\n", reg, max, words[0], words[1], words[2], words[3]);
-		}
 	}
+
+	reg = 0x40000000;
+	max = 0x40000000;
+	real_get(cpuid_fd, reg, words, 0, FALSE);
+	printf("%x/%x %x %x %x %x\n", reg, max, words[0], words[1], words[2], words[3]);
+
+	for (reg = 0x80000002; reg <= 0x80000004; reg++) {
+		real_get(cpuid_fd, reg, words, 0, FALSE);
+		printf("%x/%x %d %x %x %x\n", reg, max, words[0], words[1], words[2], words[3]);
+	}
+
 }
