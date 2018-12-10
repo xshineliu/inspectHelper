@@ -85,7 +85,7 @@ int main() {
 
 	for (reg = 0x80000002; reg <= 0x80000004; reg++) {
 		real_get(cpuid_fd, reg, words, 0, FALSE);
-		printf("%x/%x %d %x %x %x\n", reg, max, words[0], words[1], words[2], words[3]);
+		printf("%x/%x %x %x %x %x\n", reg, max, words[0], words[1], words[2], words[3]);
 	}
 
 }
