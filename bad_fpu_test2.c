@@ -1,12 +1,5 @@
 /*
 * gcc -O2 -g  -o bad_fpu_test2 bad_fpu_test2.c -mavx2 -lpthread
-* 0x73000000 0x00000001	0x4530000043300000, 0x0000000000000000	0x3030000000000029, 0x4530000000000000
-* Total Hit : 0x00000001
-* Some other example is as:
-* 0x77000000 0x00000001	0x4530000047300000, 0x0000000000000000	0x3030000000000029, 0x4530000000000000
-* 0xff000000 0x00000001	0x45300000cf300000, 0x0000000000000000	0x3030000000000029, 0x4530000000000000
-* if magic number start with 0x30, then result is still 0x30
-* aka, whether the leading number is (from 0x00 to 0xff), the result keeps as 0x30
 */
 
 #ifndef _GNU_SOURCE
@@ -51,43 +44,54 @@ else
 
 __attribute__((noinline)) void test_func1(void) {
 
-__m128i res1;
-__m128i magic1;
-__m128i val1;
+  __m128i res1;
+  __m128i magic1;
+  __m128i val1;
 
-unsigned int checker = 0xFFFFFFFF;
-unsigned int expecter = 0xFFFFFFFF;
-unsigned int bad_bit = 0x01000000;
-size_t hit = 0;
+  unsigned int expector = 0xFFFFFFFF;
+  unsigned int obtained = 0xFFFFFFFF;
+  unsigned int cur_pattern = 0xFFFFFFFF;
+  unsigned int last_pattern = 0xFFFFFFFF;
+  size_t hit1 = 0;
+  size_t hit2 = 0;
 
-for (; checker != 0; checker--) {
-//if (checker != 0x43300000) {
-//if (checker & bad_bit != 0) {
-//	continue;
-//}
+  for (; expector != 0; expector--) {
 
-magic1 = _mm_set_epi32(0x0, 0x0, 0x45300000, checker);
-val1 = _mm_set_epi32(0x0, 0x0, 0x0, 0x29);
+    magic1 = _mm_set_epi32(0x0, 0x0, 0x45300000, expector);
+    val1 = _mm_set_epi32(0x0, 0x0, 0x0, 0x29);
 
-__asm__ __volatile__ ("vmovupd %1, %%xmm1\n\t"
+   __asm__ __volatile__ ("vmovupd %1, %%xmm1\n\t"
         "vmovupd %2, %%xmm0\n\t"
         "punpckldq %%xmm0,%%xmm1\n\t"
-"__BRKH:\n\t"
+  "__BRKH:\n\t"
         "vmovdqu %%xmm1, %0\n\t"
         : "=m"(res1)
         : "m"(val1), "m"(magic1)
         : "xmm0", "xmm1");
 
-expecter = (unsigned int)(res1[0] >> 32);
-if(expecter != checker) {
-   hit++;
-   //printf("0x%08lx 0x%08lx\t", expecter ^ checker, hit);
-   //printf("0x%016llx, 0x%016llx\t", magic1[0], magic1[1]);
-   //printf("0x%016llx, 0x%016llx\n", res1[0], res1[1]);
-}
-}
+   obtained = (unsigned int)(res1[0] >> 32);
+   if(obtained != expector) {
+      hit1++;
 
-   printf("Total Hit : 0x%08lx\n", hit);
+      if( (obtained >> 24) != ((obtained & 0x00FF0000) >> 16) ) {
+        hit2++;
+      }
+
+      cur_pattern = expector & 0x00FF0000;
+      if ( cur_pattern != last_pattern) {
+        last_pattern = cur_pattern;
+
+        // only print an example cycle, EA short for example
+        if ( (expector & 0xFF000000) == 0xEA000000 ){
+          printf("0x%08lx 0x%08lx 0x%08lx\t", obtained ^ expector, hit1, hit2);
+          printf("0x%016llx, 0x%016llx\t", magic1[0], magic1[1]);
+          printf("0x%016llx, 0x%016llx\n", res1[0], res1[1]);
+        }
+      }
+    }
+  }
+
+   printf("Total Hit : 0x%08lx 0x%08lx\n", hit1, hit2);
 }
 
 
