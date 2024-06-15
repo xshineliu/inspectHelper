@@ -73,7 +73,7 @@ __attribute__((noinline)) void test_func1(void) {
    if(obtained != expector) {
       hit1++;
 
-      if( (obtained >> 24) != ((obtained & 0x00FF0000) >> 16) ) {
+      if( (obtained >> 24) == ((obtained & 0x00FF0000) >> 16) ) {
         hit2++;
       }
 
