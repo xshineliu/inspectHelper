@@ -2,8 +2,11 @@
 * gcc -O2 -g  -o bad_fpu_test2 bad_fpu_test2.c -mavx2 -lpthread
 * 0x73000000 0x00000001	0x4530000043300000, 0x0000000000000000	0x3030000000000029, 0x4530000000000000
 * Total Hit : 0x00000001
-*  if set magic number to 0x47300000, the result is like
+* Some other example is as:
 * 0x77000000 0x00000001	0x4530000047300000, 0x0000000000000000	0x3030000000000029, 0x4530000000000000
+* 0xff000000 0x00000001	0x45300000cf300000, 0x0000000000000000	0x3030000000000029, 0x4530000000000000
+* if magic number start with 0x30, then result is still 0x30
+* aka, whether the leading number is (from 0x00 to 0xff), the result keeps as 0x30
 */
 
 #ifndef _GNU_SOURCE
