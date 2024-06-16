@@ -175,7 +175,6 @@ double __attribute__((noinline)) foo7(size_t m) {
 
   __m128i magic1;
   __m128i magic2;
-  __m128i magic3;
   double val_ret = 0.0f;
 
   unsigned int mh = 0x45300000;
@@ -201,34 +200,70 @@ double __attribute__((noinline)) foo7(size_t m) {
     return val_ret;
 }
 
-
-double __attribute__((noinline)) fooX(size_t m) {
+double __attribute__((noinline)) foo8(size_t m) {
 
   __m128i magic1;
   __m128i magic2;
+  __m128d magic3;
+
   double val_ret = 0.0f;
 
   unsigned int mh = 0x45300000;
   unsigned int ml = 0x43300000;
 
 
-  magic1 = _mm_set_epi32(mh, 0x0, ml, 0x29);
+  magic1 = _mm_set_epi32(mh, 0x0, ml, (unsigned int)m);
   magic2 = _mm_set_epi32(mh, 0x0, ml, 0);
 
-   __asm__ __volatile__ ("movupd %2, %%xmm0\n\t"
-"__BRKPX:\n\t"
+   __asm__ __volatile__ ("nop\n\t"
+"__BRKP8:\n\t"
         "movupd %1, %%xmm1\n\t"
+	"movupd %2,  %%xmm0\n\t"
 	"subpd  %%xmm0, %%xmm1\n\t"
-	"pshufd $0xe4,%%xmm1,%%xmm0\n\t"
-        "movsd  %%xmm0, %0\n\t"
-        : "=m"(val_ret)
+	"movupd %%xmm1, %0\n\t"
+        : "=m"(magic3)
         : "m"(magic1), "m"(magic2)
         : "xmm0", "xmm1");
 
+    val_ret = magic3[1];
     return val_ret;
 }
 
 
+double __attribute__((noinline)) foo9(size_t m) {
+
+  __m128i magic1;
+  __m128i magic2;
+  __m128d magic3;
+
+  double val_ret = 0.0f;
+
+  unsigned int mh = 0x45300000;
+  unsigned int ml = 0x43300000;
+
+
+  magic1 = _mm_set_epi32(mh, 0x0, ml, (unsigned int)m);
+  magic2 = _mm_set_epi32(mh, 0x0, ml, 0);
+
+   __asm__ __volatile__ ("\n\t"
+"__BRKP9:\n\t"
+        "movupd %1, %%xmm1\n\t"
+	"movupd %2,  %%xmm0\n\t"
+	"subpd  %%xmm0, %%xmm1\n\t"
+	"movupd %%xmm1, %0\n\t"
+
+        "movupd %1, %%xmm1\n\t"
+	"movupd %2,  %%xmm0\n\t"
+	"subpd  %%xmm0, %%xmm1\n\t"
+	"movupd %%xmm1, %0\n\t"
+
+        : "=m"(magic3)
+        : "m"(magic1), "m"(magic2)
+        : "xmm0", "xmm1");
+
+    val_ret = magic3[1];
+    return val_ret;
+}
 
 
 
@@ -258,11 +293,13 @@ void *work(void *parm) {
   fprintf(stderr, "pthread_setaffinity_np %d succussfull\n", val);
   while (1) {
     //double x = foo(m);
-    double x = foo7(m);
+    double x = foo8(m);
 __XXX:
     if (x < 0.0) {
       loop_hit++;
-      printf("%4d HIT HIT HIT !!! %llx %f loop=%llx hit=%llx\n", val, *(unsigned long long*)&x, x, loop, loop_hit);
+      if( loop_hit % 1000000 == 0) {
+        printf("%4d HIT HIT HIT !!! %llx %f loop=%20lld hit=%20lld\n", val, *(unsigned long long*)&x, x, loop, loop_hit);
+      }
       //break;
     }
     if ( infinite < 0) {
